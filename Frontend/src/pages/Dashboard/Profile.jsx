@@ -104,8 +104,8 @@ export default function Profile() {
     }
   };
 
-  const menuUrl = restaurant?.slug
-    ? `${FRONTEND_URL}/menu/${restaurant.slug}`
+  const menuUrl = restaurant?.slug 
+    ? `${window.location.origin}/menu/${restaurant.slug}` 
     : null;
 
   return (
