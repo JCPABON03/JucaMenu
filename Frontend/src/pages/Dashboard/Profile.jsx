@@ -10,7 +10,7 @@ const EMPTY = {
   tiktok: '', schedule: '', maps_url: '', phone: '', address: '',
 };
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_API_URL?.replace("http://", "https://");
 
 export default function Profile() {
   const [restaurant, setRestaurant] = useState(EMPTY);
