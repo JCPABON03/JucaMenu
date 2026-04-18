@@ -5,7 +5,7 @@ import axios from '../../api';
 import { applyTheme, themeFromRestaurant } from '../../../hooks/UserTheme';
 import "../../styles/menu.css";
 
-const API = 'http://localhost:8000';
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
 
 export default function MenuPage() {
   const { slug } = useParams();
@@ -19,7 +19,7 @@ export default function MenuPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const resp = await axios.get(`/api/menu/${slug}`);
+        const resp = await axios.get(`/api/menu/${slug}/`);
         setMenu(resp.data);
         applyTheme(themeFromRestaurant(resp.data.restaurant));
         if (resp.data.categories?.length > 0) {
