@@ -13,17 +13,18 @@ app = FastAPI(
     title="JucaMenu API"
 )
 
-# ── 1. CORS Middleware ─────────────────────────────────────
+# ── 1. CORS (CONFIGURACIÓN DEFINITIVA) ─────────────────────
 origins = [
     "https://juca-menu-fnypxvcvi-juancas-projects-d1fcab06.vercel.app",
+    "http://localhost:5173",  # para desarrollo local (Vite)
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,   # 🔥 importante: tu frontend
-    allow_credentials=True,  # 🔥 necesario para auth (tokens, cookies)
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,
+    allow_credentials=True,   # 🔥 necesario para Authorization headers
+    allow_methods=["*"],      # incluye GET, POST, OPTIONS, etc.
+    allow_headers=["*"],      # permite Authorization, Content-Type, etc.
 )
 
 # ── 2. Routers ─────────────────────────────────────────────
@@ -57,4 +58,3 @@ def verify_bcrypt():
         logging.warning(
             "unable to determine bcrypt version; ensure bcrypt>=5.1.0 is installed",
         )
-print("CORS ACTIVADO")
