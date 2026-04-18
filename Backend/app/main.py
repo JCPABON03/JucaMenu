@@ -17,6 +17,7 @@ app = FastAPI(
 
 # ── 1. CORS (CONFIGURACIÓN DEFINITIVA) ─────────────────────
 origins = [
+    "https://juca-menu.vercel.app",
     "https://juca-menu-fnypxvcvi-juancas-projects-d1fcab06.vercel.app",
     "https://juca-menu-ifp80bm6x-juancas-projects-d1fcab06.vercel.app", # La URL del error
     "http://localhost:5173",
@@ -29,6 +30,7 @@ app.add_middleware(
     allow_origin_regex=r"https://juca-menu-.*\.vercel\.app", # Acepta cualquier URL de tu proyecto en Vercel
     allow_credentials=True,
     allow_methods=["*"],
+    expose_headers=["*"], # Añadimos esto para mayor compatibilidad
     allow_headers=["*"],
 )
 
