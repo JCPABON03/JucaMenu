@@ -5,8 +5,8 @@ import axios from '../../api';
 import { applyTheme, themeFromRestaurant } from '../../../hooks/UserTheme';
 import "../../styles/menu.css";
 
-// URL Base de tu API en Railway (Asegúrate de que sea HTTPS)
-const API_BASE_URL = 'https://jucamenu-production.up.railway.app';
+// Priorizamos la variable de entorno, si no, usamos la de Railway fija
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jucamenu-production.up.railway.app';
 
 export default function MenuPage() {
   const { slug } = useParams();
@@ -20,14 +20,16 @@ export default function MenuPage() {
   // Función para construir URLs de imágenes (Cloudinary vs Local)
   const getFullUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith('http')) return path; // Si ya es HTTPS (Cloudinary)
-    return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`; // Si es ruta local del servidor
+    if (path.startsWith('http')) return path; 
+    // Limpiamos barras invertidas (Windows) por barras normales
+    const cleanPath = path.replace(/\\/g, '/');
+    return `${API_BASE_URL}/${cleanPath}`;
   };
 
   useEffect(() => {
     const load = async () => {
       try {
-        // Importante: Barra final '/' para evitar redirecciones 307 (Mixed Content)
+        // La barra final / es CRUCIAL para evitar el 307
         const resp = await axios.get(`/api/menu/${slug}/`);
         setMenu(resp.data);
         
@@ -40,7 +42,7 @@ export default function MenuPage() {
         }
       } catch (err) {
         console.error("Error al cargar menú:", err);
-        setError('No se pudo cargar el menú o el restaurante no existe.');
+        setError('No se pudo cargar el menú.');
       }
     };
     load();
@@ -71,7 +73,6 @@ export default function MenuPage() {
 
   const r = menu.restaurant;
 
-  // Lógica de búsqueda y filtrado
   const allProducts = menu.categories.flatMap((c) =>
     c.products.map((p) => ({ ...p, categoryName: c.name }))
   );
@@ -96,8 +97,6 @@ export default function MenuPage() {
 
   return (
     <div className="menu-page">
-
-      {/* ── Header con banner dinámico ── */}
       <header
         className="menu-header"
         style={r.banner ? {
@@ -109,25 +108,20 @@ export default function MenuPage() {
         <div className="menu-header__overlay" />
         <div className="menu-header__inner">
           {r.logo && (
-            <img
-              className="menu-header__logo"
-              src={getFullUrl(r.logo)}
-              alt={r.name}
-            />
+            <img className="menu-header__logo" src={getFullUrl(r.logo)} alt={r.name} />
           )}
           <h1 className="menu-header__name">{r.name}</h1>
           {r.description && <p className="menu-header__desc">{r.description}</p>}
           <div className="menu-header__socials">
-            {r.instagram && <a href={`https://instagram.com/${r.instagram}`} target="_blank" rel="noopener noreferrer">Instagram</a>}
-            {r.facebook && <a href={r.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>}
-            {r.tiktok && <a href={r.tiktok} target="_blank" rel="noopener noreferrer">TikTok</a>}
-            {r.maps_url && <a href={r.maps_url} target="_blank" rel="noopener noreferrer">📍 Ubicación</a>}
+            {r.instagram && <a href={`https://instagram.com/${r.instagram}`} target="_blank" rel="noreferrer">Instagram</a>}
+            {r.facebook && <a href={r.facebook} target="_blank" rel="noreferrer">Facebook</a>}
+            {r.tiktok && <a href={r.tiktok} target="_blank" rel="noreferrer">TikTok</a>}
+            {r.maps_url && <a href={r.maps_url} target="_blank" rel="noreferrer">📍 Ubicación</a>}
           </div>
           {r.schedule && <p className="menu-header__schedule">🕐 {r.schedule}</p>}
         </div>
       </header>
 
-      {/* ── Navbar: búsqueda y menú ── */}
       <div className="menu-navbar">
         <div className="menu-navbar__inner">
           <div className="menu-search">
@@ -141,17 +135,12 @@ export default function MenuPage() {
             />
             {search && <button className="menu-search__clear" onClick={() => setSearch('')}>✕</button>}
           </div>
-
-          <button
-            className={`menu-hamburger${drawerOpen ? ' menu-hamburger--open' : ''}`}
-            onClick={() => setDrawerOpen((v) => !v)}
-          >
+          <button className={`menu-hamburger${drawerOpen ? ' menu-hamburger--open' : ''}`} onClick={() => setDrawerOpen((v) => !v)}>
             <span /><span /><span />
           </button>
         </div>
       </div>
 
-      {/* ── Tabs de categorías ── */}
       {!isSearching && (
         <nav className="menu-tabs">
           <div className="menu-tabs__inner">
@@ -168,81 +157,52 @@ export default function MenuPage() {
         </nav>
       )}
 
-      {/* ── Drawer lateral ── */}
-      <>
-        <div className={`menu-drawer-backdrop${drawerOpen ? ' menu-drawer-backdrop--open' : ''}`} onClick={() => setDrawerOpen(false)} />
-        <aside ref={drawerRef} className={`menu-drawer${drawerOpen ? ' menu-drawer--open' : ''}`}>
-          <div className="menu-drawer__header">
-            <span className="menu-drawer__title">Categorías</span>
-            <button className="menu-drawer__close" onClick={() => setDrawerOpen(false)}>✕</button>
-          </div>
-          <ul className="menu-drawer__list">
-            {menu.categories.map((cat) => (
-              <li key={cat.id}>
-                <button
-                  className={`menu-drawer__item${activeTab === cat.id && !isSearching ? ' menu-drawer__item--active' : ''}`}
-                  onClick={() => selectCategory(cat.id)}
-                >
-                  <span>{cat.name}</span>
-                  <span className="menu-drawer__count">{cat.products.length}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      </>
+      <div className={`menu-drawer-backdrop${drawerOpen ? ' menu-drawer-backdrop--open' : ''}`} onClick={() => setDrawerOpen(false)} />
+      <aside ref={drawerRef} className={`menu-drawer${drawerOpen ? ' menu-drawer--open' : ''}`}>
+        <div className="menu-drawer__header">
+          <span className="menu-drawer__title">Categorías</span>
+          <button className="menu-drawer__close" onClick={() => setDrawerOpen(false)}>✕</button>
+        </div>
+        <ul className="menu-drawer__list">
+          {menu.categories.map((cat) => (
+            <li key={cat.id}>
+              <button
+                className={`menu-drawer__item${activeTab === cat.id && !isSearching ? ' menu-drawer__item--active' : ''}`}
+                onClick={() => selectCategory(cat.id)}
+              >
+                <span>{cat.name}</span>
+                <span className="menu-drawer__count">{cat.products.length}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </aside>
 
-      {/* ── Contenido Principal ── */}
       <main className="menu-main">
-        {isSearching ? (
-          <div className="menu-grid">
-            {searchResults.length === 0 ? (
-              <p className="menu-empty">No se encontró "{search}"</p>
-            ) : (
-              searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
-            )}
-          </div>
-        ) : (
-          activeCategory && (
-            <div className="menu-grid">
-              {activeCategory.products.length === 0 ? (
-                <p className="menu-empty">No hay productos en esta categoría.</p>
-              ) : (
-                activeCategory.products
-                  .filter(p => p.available !== false)
-                  .map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
-              )}
-            </div>
-          )
-        )}
+        <div className="menu-grid">
+          {isSearching ? (
+            searchResults.length === 0 ? <p className="menu-empty">No se encontró "{search}"</p> : 
+            searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+          ) : (
+            activeCategory?.products.filter(p => p.available !== false).map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+          )}
+        </div>
       </main>
 
-      <footer className="menu-footer">
-        Powered by <strong>JucaMenu</strong>
-      </footer>
+      <footer className="menu-footer">Powered by <strong>JucaMenu</strong></footer>
     </div>
   );
 }
 
-// Componente de Tarjeta de Producto
 function ProductCard({ p, getUrl }) {
-  // Manejamos si la imagen es un objeto con image_url o solo el string
   const imagePath = p.images?.length > 0 
     ? (typeof p.images[0] === 'object' ? p.images[0].image_url : p.images[0])
     : null;
 
   return (
     <div className="menu-card">
-      {imagePath ? (
-        <img
-          className="menu-card__img"
-          src={getUrl(imagePath)}
-          alt={p.name}
-          loading="lazy"
-        />
-      ) : (
-        <div className="menu-card__img menu-card__img--placeholder">🍽</div>
-      )}
+      {imagePath ? <img className="menu-card__img" src={getUrl(imagePath)} alt={p.name} loading="lazy" /> : 
+      <div className="menu-card__img menu-card__img--placeholder">🍽</div>}
       <div className="menu-card__body">
         <h3 className="menu-card__name">{p.name}</h3>
         {p.description && <p className="menu-card__desc">{p.description}</p>}
