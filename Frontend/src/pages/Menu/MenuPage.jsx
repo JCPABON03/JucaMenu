@@ -5,8 +5,8 @@ import axios from '../../api';
 import { applyTheme, themeFromRestaurant } from '../../../hooks/UserTheme';
 import "../../styles/menu.css";
 
-// Definimos la URL base de tu API en Railway para las imágenes
-const API_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
+// URL Base de tu API en Railway (Asegúrate de que sea HTTPS)
+const API_BASE_URL = 'https://jucamenu-production.up.railway.app';
 
 export default function MenuPage() {
   const { slug } = useParams();
@@ -17,14 +17,20 @@ export default function MenuPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef();
 
+  // Función para construir URLs de imágenes (Cloudinary vs Local)
+  const getFullUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path; // Si ya es HTTPS (Cloudinary)
+    return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`; // Si es ruta local del servidor
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
-        // Añadimos la barra final '/' para evitar el error 307 de Mixed Content
+        // Importante: Barra final '/' para evitar redirecciones 307 (Mixed Content)
         const resp = await axios.get(`/api/menu/${slug}/`);
         setMenu(resp.data);
         
-        // Aplicar el tema personalizado del restaurante
         if (resp.data.restaurant) {
           applyTheme(themeFromRestaurant(resp.data.restaurant));
         }
@@ -33,8 +39,8 @@ export default function MenuPage() {
           setActiveTab(resp.data.categories[0].id);
         }
       } catch (err) {
-        console.error("Error cargando el menú:", err);
-        setError('No se pudo cargar el menú.');
+        console.error("Error al cargar menú:", err);
+        setError('No se pudo cargar el menú o el restaurante no existe.');
       }
     };
     load();
@@ -65,7 +71,7 @@ export default function MenuPage() {
 
   const r = menu.restaurant;
 
-  // Lógica de filtrado
+  // Lógica de búsqueda y filtrado
   const allProducts = menu.categories.flatMap((c) =>
     c.products.map((p) => ({ ...p, categoryName: c.name }))
   );
@@ -88,17 +94,10 @@ export default function MenuPage() {
     setDrawerOpen(false);
   };
 
-  // Función auxiliar para procesar URLs de imágenes (Cloudinary vs Local)
-  const getFullUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith('http')) return path; // Si ya es de Cloudinary
-    return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`; // Si es local del servidor
-  };
-
   return (
     <div className="menu-page">
 
-      {/* ── Header con banner ── */}
+      {/* ── Header con banner dinámico ── */}
       <header
         className="menu-header"
         style={r.banner ? {
@@ -128,7 +127,7 @@ export default function MenuPage() {
         </div>
       </header>
 
-      {/* ── Navbar ── */}
+      {/* ── Navbar: búsqueda y menú ── */}
       <div className="menu-navbar">
         <div className="menu-navbar__inner">
           <div className="menu-search">
@@ -136,7 +135,7 @@ export default function MenuPage() {
             <input
               className="menu-search__input"
               type="text"
-              placeholder="Buscar platillo…"
+              placeholder="Buscar platillo..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -146,7 +145,6 @@ export default function MenuPage() {
           <button
             className={`menu-hamburger${drawerOpen ? ' menu-hamburger--open' : ''}`}
             onClick={() => setDrawerOpen((v) => !v)}
-            aria-label="Categorías"
           >
             <span /><span /><span />
           </button>
@@ -194,53 +192,53 @@ export default function MenuPage() {
         </aside>
       </>
 
-      {/* ── Contenido ── */}
+      {/* ── Contenido Principal ── */}
       <main className="menu-main">
-        {isSearching && (
-          <>
-            <p className="menu-search-label">
-              {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} para "<strong>{search}</strong>"
-            </p>
-            <div className="menu-grid">
-              {searchResults.length === 0 && <p className="menu-empty">No se encontraron productos.</p>}
-              {searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)}
-            </div>
-          </>
-        )}
-
-        {!isSearching && activeCategory && (
+        {isSearching ? (
           <div className="menu-grid">
-            {activeCategory.products.filter(p => p.available !== false).length === 0 && (
-              <p className="menu-empty">No hay productos aquí.</p>
+            {searchResults.length === 0 ? (
+              <p className="menu-empty">No se encontró "{search}"</p>
+            ) : (
+              searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
             )}
-            {activeCategory.products
-              .filter(p => p.available !== false)
-              .map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)}
           </div>
+        ) : (
+          activeCategory && (
+            <div className="menu-grid">
+              {activeCategory.products.length === 0 ? (
+                <p className="menu-empty">No hay productos en esta categoría.</p>
+              ) : (
+                activeCategory.products
+                  .filter(p => p.available !== false)
+                  .map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+              )}
+            </div>
+          )
         )}
       </main>
 
       <footer className="menu-footer">
-        Menú digital por <strong>JucaMenu</strong>
+        Powered by <strong>JucaMenu</strong>
       </footer>
     </div>
   );
 }
 
-// Componente Card Interno
+// Componente de Tarjeta de Producto
 function ProductCard({ p, getUrl }) {
-  // Manejamos las imágenes de los productos (pueden venir como array de objetos o strings)
-  const firstImage = p.images?.length > 0 
+  // Manejamos si la imagen es un objeto con image_url o solo el string
+  const imagePath = p.images?.length > 0 
     ? (typeof p.images[0] === 'object' ? p.images[0].image_url : p.images[0])
     : null;
 
   return (
     <div className="menu-card">
-      {firstImage ? (
+      {imagePath ? (
         <img
           className="menu-card__img"
-          src={getUrl(firstImage)}
+          src={getUrl(imagePath)}
           alt={p.name}
+          loading="lazy"
         />
       ) : (
         <div className="menu-card__img menu-card__img--placeholder">🍽</div>
