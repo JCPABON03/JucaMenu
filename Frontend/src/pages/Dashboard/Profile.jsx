@@ -10,7 +10,7 @@ const EMPTY = {
   tiktok: '', schedule: '', maps_url: '', phone: '', address: '',
 };
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL;
 
 export default function Profile() {
   const [restaurant, setRestaurant] = useState(EMPTY);
@@ -33,7 +33,17 @@ export default function Profile() {
 
   const load = async () => {
     try {
-      const resp = await axios.get('/api/restaurants/me');
+      await axios.post('/api/restaurants/', {
+        name: restaurant.name,
+        description: restaurant.description || null,
+        instagram: restaurant.instagram || null,
+        facebook: restaurant.facebook || null,
+        tiktok: restaurant.tiktok || null,
+        schedule: restaurant.schedule || null,
+        maps_url: restaurant.maps_url || null,
+        phone: restaurant.phone || null,
+        address: restaurant.address || null,
+      });
       setRestaurant(resp.data);
       setExists(true);
       localStorage.setItem('jucamenu_restaurant', JSON.stringify(resp.data));
