@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
+  baseURL: jucamenu-production.up.railway.app
 });
 
 instance.interceptors.request.use((config) => {
