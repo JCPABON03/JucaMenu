@@ -32,7 +32,7 @@ export default function ThemeManager() {
   useEffect(() => {
     const load = async () => {
       try {
-        const resp = await axios.get('/api/restaurants/me');
+        const resp = await axios.get('/api/restaurants/me/');
         setTheme(themeFromRestaurant(resp.data));
       } catch {
         setError('No se pudo cargar el tema.');
@@ -50,7 +50,7 @@ export default function ThemeManager() {
     setLoading(true);
     setError('');
     try {
-      await axios.patch('/api/restaurants/me/theme', {
+      await axios.patch('/api/restaurants/me/theme/', {
         theme_primary: theme.primary,
         theme_accent:  theme.accent,
         theme_text:    theme.text,
