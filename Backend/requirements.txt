@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+# explicit bcrypt version to avoid AttributeError during password hashing
+bcrypt>=4.0.1  # current latest is 5.0.0; 5.x lacks __about__ attribute
+python-jose
+pydantic
+pydantic-settings
+alembic
+qrcode
+pillow
+python-multipart
+authlib
+httpx

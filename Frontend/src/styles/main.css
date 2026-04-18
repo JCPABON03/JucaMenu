@@ -1,0 +1,27 @@
+/* main.css */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: sans-serif;
+  padding: 1rem;
+  
+}
+
+input,
+select,
+textarea {
+  margin: 0;        /* ← era 0.25rem, causaba el overflow */
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.menu-page {
+  margin: -1rem;  /* cancela el padding del body */
+}
