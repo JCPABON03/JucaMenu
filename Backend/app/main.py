@@ -11,7 +11,7 @@ from app.routers import public_menu_router
 
 app = FastAPI(
     title="JucaMenu API",
-    redirect_slashes=False
+    redirect_slashes=True
     
 )
 
