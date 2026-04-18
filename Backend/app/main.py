@@ -57,3 +57,4 @@ def verify_bcrypt():
         logging.warning(
             "unable to determine bcrypt version; ensure bcrypt>=5.1.0 is installed",
         )
+print("CORS ACTIVADO")
