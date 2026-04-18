@@ -23,10 +23,10 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,   # 🔥 necesario para Authorization headers
-    allow_methods=["*"],      # incluye GET, POST, OPTIONS, etc.
-    allow_headers=["*"],      # permite Authorization, Content-Type, etc.
+    allow_origin_regex=r"https://juca-menu-.*\.vercel\.app", # Acepta cualquier URL de tu proyecto en Vercel
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── 2. Routers ─────────────────────────────────────────────
