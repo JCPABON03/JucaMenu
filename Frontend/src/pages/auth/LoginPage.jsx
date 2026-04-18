@@ -17,7 +17,7 @@ export default function LoginPage() {
   const submit = async (e) => {
     e.preventDefault();
     try {
-      const resp = await axios.post('/api/auth/token', new URLSearchParams({ username: email, password }));
+      const resp = await axios.post('auth/token', new URLSearchParams({ username: email, password }));
       localStorage.setItem('access_token', resp.data.access_token);
       navigate('/dashboard');
     } catch {
