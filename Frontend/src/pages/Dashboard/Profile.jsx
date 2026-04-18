@@ -34,7 +34,7 @@ export default function Profile() {
   const load = async () => {
     try {
       // CAMBIO: Usar GET a /me/ para ver si ya tengo uno
-      const resp = await axios.get('api/restaurants/me/'); 
+      const resp = await axios.get('/api/restaurants/me/'); 
       
       if (resp.data) {
         setRestaurant(resp.data);
