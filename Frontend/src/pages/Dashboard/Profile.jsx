@@ -71,36 +71,76 @@ export default function Profile() {
   };
 
   const save = async () => {
-    if (!restaurant.name?.trim()) { setError('El nombre es requerido.'); return; }
+    // 1. Validación básica antes de enviar
+    if (!restaurant.name?.trim()) { 
+      setError('El nombre del restaurante es obligatorio.'); 
+      return; 
+    }
+  
     setError('');
     setLoading(true);
+  
     try {
       if (exists) {
+        // ─── MODO ACTUALIZACIÓN (PUT) ───
+        // Usamos FormData porque hay archivos (Logo/Banner)
         const data = new FormData();
-        data.append('name',        restaurant.name);
+        data.append('name', restaurant.name);
         data.append('description', restaurant.description || '');
-        data.append('instagram',   restaurant.instagram   || '');
-        data.append('facebook',    restaurant.facebook    || '');
-        data.append('tiktok',      restaurant.tiktok      || '');
-        data.append('schedule',    restaurant.schedule    || '');
-        data.append('maps_url',    restaurant.maps_url    || '');
-        data.append('phone',       restaurant.phone       || '');
-        data.append('address',     restaurant.address     || '');
-        if (logoFile)   data.append('logo',   logoFile);
+        data.append('instagram', restaurant.instagram || '');
+        data.append('facebook', restaurant.facebook || '');
+        data.append('tiktok', restaurant.tiktok || '');
+        data.append('schedule', restaurant.schedule || '');
+        data.append('maps_url', restaurant.maps_url || '');
+        data.append('phone', restaurant.phone || '');
+        data.append('address', restaurant.address || '');
+  
+        if (logoFile) data.append('logo', logoFile);
         if (bannerFile) data.append('banner', bannerFile);
+  
+        // Ruta corregida: sin /api inicial y con / final
         await axios.put('/api/restaurants/me/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+  
       } else {
-        await axios.post('/api/restaurants/', restaurant);
+        // ─── MODO CREACIÓN (POST) ───
+        // Si es la primera vez, enviamos el objeto restaurant como JSON
+        // Asegúrate de que tu esquema de FastAPI acepte estos campos
+        await axios.post('/api/restaurants/', {
+          name: restaurant.name,
+          description: restaurant.description || null,
+          instagram: restaurant.instagram || null,
+          facebook: restaurant.facebook || null,
+          tiktok: restaurant.tiktok || null,
+          schedule: restaurant.schedule || null,
+          maps_url: restaurant.maps_url || null,
+          phone: restaurant.phone || null,
+          address: restaurant.address || null,
+        });
       }
+  
+      // 2. Éxito: Limpiar estados de archivos y notificar
       setLogoFile(null);
       setBannerFile(null);
       setSaved(true);
+      
+      // Ocultar mensaje de éxito tras 3 segundos
       setTimeout(() => setSaved(false), 3000);
-      load();
-    } catch {
-      setError('Error al guardar el perfil.');
+  
+      // 3. Recargar los datos del servidor para refrescar la UI
+      await load(); 
+  
+    } catch (err) {
+      console.error("Error en save:", err.response?.data || err.message);
+      
+      // Manejo de errores específicos del 400 (Bad Request)
+      if (err.response?.status === 400) {
+        const detail = err.response.data.detail;
+        setError(typeof detail === 'string' ? detail : 'Datos inválidos. Revisa los campos.');
+      } else {
+        setError('Ocurrió un error al intentar guardar el perfil.');
+      }
     } finally {
       setLoading(false);
     }
