@@ -1,5 +1,6 @@
 // src/pages/Dashboard/Profile.jsx
 import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import axios from '../../api';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
@@ -10,19 +11,16 @@ const EMPTY = {
   tiktok: '', schedule: '', maps_url: '', phone: '', address: '',
 };
 
-const API = import.meta.env.VITE_API_URL?.replace("http://", "https://");
+const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
 
 export default function Profile() {
-  const [restaurant, setRestaurant] = useState(EMPTY);
-  const [exists,     setExists]     = useState(false);
-  const [qrInfo,     setQrInfo]     = useState(null);
-  const [error,      setError]      = useState('');
-  const [saved,      setSaved]      = useState(false);
-  const [loading,    setLoading]    = useState(false);
-
-  // previews de imágenes
-  const [logoFile,   setLogoFile]   = useState(null);
-  const [bannerFile, setBannerFile] = useState(null);
+  const [restaurant,    setRestaurant]    = useState(EMPTY);
+  const [exists,        setExists]        = useState(false);
+  const [error,         setError]         = useState('');
+  const [saved,         setSaved]         = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [logoFile,      setLogoFile]      = useState(null);
+  const [bannerFile,    setBannerFile]    = useState(null);
   const [logoPreview,   setLogoPreview]   = useState(null);
   const [bannerPreview, setBannerPreview] = useState(null);
 
@@ -33,32 +31,19 @@ export default function Profile() {
 
   const load = async () => {
     try {
-      // CAMBIO: Usar GET a /me/ para ver si ya tengo uno
-      const resp = await axios.get('/api/restaurants/me/'); 
-      
+      const resp = await axios.get('/api/restaurants/me');
       if (resp.data) {
         setRestaurant(resp.data);
-        setExists(true); // <--- Esto evitará que intente hacer POST de nuevo
+        setExists(true);
         localStorage.setItem('jucamenu_restaurant', JSON.stringify(resp.data));
       }
     } catch (err) {
-      if (err.response?.status === 404) {
-        setExists(false); // Aquí sí es válido intentar un POST después
-      } else {
-        console.error("Error cargando perfil:", err);
-      }
+      if (err.response?.status === 404) setExists(false);
+      else console.error('Error cargando perfil:', err);
     }
   };
 
-  const loadQr = async () => {
-    try {
-      const resp = await axios.get('/api/restaurants/me/qr');
-      setQrInfo(resp.data);
-    } catch { /* sin QR aún */ }
-  };
-
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (restaurant?.slug) loadQr(); }, [restaurant?.slug]);
 
   const handleImageChange = (setter, previewSetter) => (e) => {
     const file = e.target.files[0];
@@ -68,70 +53,46 @@ export default function Profile() {
   };
 
   const save = async () => {
-    // 1. Validación básica antes de enviar
-    if (!restaurant.name?.trim()) { 
-      setError('El nombre del restaurante es obligatorio.'); 
-      return; 
-    }
-  
+    if (!restaurant.name?.trim()) { setError('El nombre del restaurante es obligatorio.'); return; }
     setError('');
     setLoading(true);
-  
     try {
       if (exists) {
-        // ─── MODO ACTUALIZACIÓN (PUT) ───
-        // Usamos FormData porque hay archivos (Logo/Banner)
         const data = new FormData();
-        data.append('name', restaurant.name);
+        data.append('name',        restaurant.name);
         data.append('description', restaurant.description || '');
-        data.append('instagram', restaurant.instagram || '');
-        data.append('facebook', restaurant.facebook || '');
-        data.append('tiktok', restaurant.tiktok || '');
-        data.append('schedule', restaurant.schedule || '');
-        data.append('maps_url', restaurant.maps_url || '');
-        data.append('phone', restaurant.phone || '');
-        data.append('address', restaurant.address || '');
-  
-        if (logoFile) data.append('logo', logoFile);
+        data.append('instagram',   restaurant.instagram   || '');
+        data.append('facebook',    restaurant.facebook    || '');
+        data.append('tiktok',      restaurant.tiktok      || '');
+        data.append('schedule',    restaurant.schedule    || '');
+        data.append('maps_url',    restaurant.maps_url    || '');
+        data.append('phone',       restaurant.phone       || '');
+        data.append('address',     restaurant.address     || '');
+        if (logoFile)   data.append('logo',   logoFile);
         if (bannerFile) data.append('banner', bannerFile);
-  
-        // Ruta corregida: sin /api inicial y con / final
-        await axios.put('/api/restaurants/me/', data, {
+        await axios.put('/api/restaurants/me', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-  
       } else {
-        // ─── MODO CREACIÓN (POST) ───
-        // Si es la primera vez, enviamos el objeto restaurant como JSON
-        // Asegúrate de que tu esquema de FastAPI acepte estos campos
-        await axios.post('/api/restaurants/', {
-          name: restaurant.name,
+        await axios.post('/api/restaurants', {
+          name:        restaurant.name,
           description: restaurant.description || null,
-          instagram: restaurant.instagram || null,
-          facebook: restaurant.facebook || null,
-          tiktok: restaurant.tiktok || null,
-          schedule: restaurant.schedule || null,
-          maps_url: restaurant.maps_url || null,
-          phone: restaurant.phone || null,
-          address: restaurant.address || null,
+          instagram:   restaurant.instagram   || null,
+          facebook:    restaurant.facebook    || null,
+          tiktok:      restaurant.tiktok      || null,
+          schedule:    restaurant.schedule    || null,
+          maps_url:    restaurant.maps_url    || null,
+          phone:       restaurant.phone       || null,
+          address:     restaurant.address     || null,
         });
       }
-  
-      // 2. Éxito: Limpiar estados de archivos y notificar
       setLogoFile(null);
       setBannerFile(null);
       setSaved(true);
-      
-      // Ocultar mensaje de éxito tras 3 segundos
       setTimeout(() => setSaved(false), 3000);
-  
-      // 3. Recargar los datos del servidor para refrescar la UI
-      await load(); 
-  
+      await load();
     } catch (err) {
-      console.error("Error en save:", err.response?.data || err.message);
-      
-      // Manejo de errores específicos del 400 (Bad Request)
+      console.error('Error en save:', err.response?.data || err.message);
       if (err.response?.status === 400) {
         const detail = err.response.data.detail;
         setError(typeof detail === 'string' ? detail : 'Datos inválidos. Revisa los campos.');
@@ -142,6 +103,10 @@ export default function Profile() {
       setLoading(false);
     }
   };
+
+  const menuUrl = restaurant?.slug
+    ? `${FRONTEND_URL}/menu/${restaurant.slug}`
+    : null;
 
   return (
     <div className="dash-section">
@@ -156,56 +121,30 @@ export default function Profile() {
           <p className="theme-section-label">Imágenes</p>
           <div className="profile-images">
 
-            {/* Logo */}
             <div className="profile-img-field">
               <p className="profile-img-label">Logo</p>
-              <div
-                className="profile-img-preview"
-                onClick={() => logoRef.current.click()}
-                style={{ cursor: 'pointer' }}
-              >
+              <div className="profile-img-preview" onClick={() => logoRef.current.click()} style={{ cursor: 'pointer' }}>
                 {logoPreview || restaurant.logo ? (
-                  <img
-                    src={logoPreview || `${API}/${restaurant.logo?.replace(/\\/g, '/')}`}
-                    alt="Logo"
-                  />
+                  <img src={logoPreview || restaurant.logo} alt="Logo" />
                 ) : (
                   <span className="profile-img-placeholder">＋ Logo</span>
                 )}
               </div>
-              <input
-                ref={logoRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleImageChange(setLogoFile, setLogoPreview)}
-              />
+              <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={handleImageChange(setLogoFile, setLogoPreview)} />
             </div>
 
-            {/* Banner */}
             <div className="profile-img-field profile-img-field--wide">
               <p className="profile-img-label">Banner (fondo del header)</p>
-              <div
-                className="profile-img-preview profile-img-preview--banner"
-                onClick={() => bannerRef.current.click()}
-                style={{ cursor: 'pointer' }}
-              >
+              <div className="profile-img-preview profile-img-preview--banner" onClick={() => bannerRef.current.click()} style={{ cursor: 'pointer' }}>
                 {bannerPreview || restaurant.banner ? (
-                  <img
-                    src={bannerPreview || `${API}/${restaurant.banner?.replace(/\\/g, '/')}`}
-                    alt="Banner"
-                  />
+                  <img src={bannerPreview || restaurant.banner} alt="Banner" />
                 ) : (
                   <span className="profile-img-placeholder">＋ Banner</span>
                 )}
               </div>
-              <input
-                ref={bannerRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleImageChange(setBannerFile, setBannerPreview)}
-              />
+              <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }}
+                onChange={handleImageChange(setBannerFile, setBannerPreview)} />
             </div>
 
           </div>
@@ -219,7 +158,7 @@ export default function Profile() {
           <FormField label="Nombre"      value={restaurant.name        || ''} onChange={set('name')}        required />
           <FormField label="Teléfono"    value={restaurant.phone       || ''} onChange={set('phone')} />
           <FormField label="Horario"     value={restaurant.schedule    || ''} onChange={set('schedule')} />
-          <FormField label="Google Maps" value={restaurant.maps_url    || ''} onChange={set('maps_url')}    />
+          <FormField label="Google Maps" value={restaurant.maps_url    || ''} onChange={set('maps_url')} />
           <FormField label="Instagram"   value={restaurant.instagram   || ''} onChange={set('instagram')} />
           <FormField label="Facebook"    value={restaurant.facebook    || ''} onChange={set('facebook')} />
           <FormField label="TikTok"      value={restaurant.tiktok      || ''} onChange={set('tiktok')} />
@@ -232,16 +171,16 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* ── QR ── */}
-      {qrInfo && (
+      {/* ── QR generado en frontend ── */}
+      {menuUrl && (
         <div className="dash-card dash-qr">
           <div>
             <p className="dash-qr__label">URL del menú público</p>
-            <a className="dash-qr__url" href={qrInfo.menu_url} target="_blank" rel="noopener noreferrer">
-              {qrInfo.menu_url}
+            <a className="dash-qr__url" href={menuUrl} target="_blank" rel="noopener noreferrer">
+              {menuUrl}
             </a>
           </div>
-          <img className="dash-qr__img" src={qrInfo.qr_path} alt="QR code" />
+          <QRCodeSVG value={menuUrl} size={120} className="dash-qr__img" />
         </div>
       )}
     </div>
