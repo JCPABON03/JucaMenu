@@ -88,11 +88,11 @@ export default function Profile() {
         data.append('address',     restaurant.address     || '');
         if (logoFile)   data.append('logo',   logoFile);
         if (bannerFile) data.append('banner', bannerFile);
-        await axios.put('/api/restaurants/me', data, {
+        await axios.put('/api/restaurants/me/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       } else {
-        await axios.post('/api/restaurants', restaurant);
+        await axios.post('/api/restaurants/', restaurant);
       }
       setLogoFile(null);
       setBannerFile(null);
