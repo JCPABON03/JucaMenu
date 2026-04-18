@@ -1,4 +1,4 @@
-// src/pages/Dashboard/Profile.jsx
+ // src/pages/Dashboard/Profile.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import axios from '../../api';
@@ -11,7 +11,8 @@ const EMPTY = {
   tiktok: '', schedule: '', maps_url: '', phone: '', address: '',
 };
 
-const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
+// Base URL para imágenes del servidor
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jucamenu-production.up.railway.app';
 
 export default function Profile() {
   const [restaurant,    setRestaurant]    = useState(EMPTY);
@@ -27,11 +28,19 @@ export default function Profile() {
   const logoRef   = useRef();
   const bannerRef = useRef();
 
+  // Helper para mostrar imágenes locales o de Cloudinary
+  const getFullUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`;
+  };
+
   const set = (field) => (e) => setRestaurant((r) => ({ ...r, [field]: e.target.value }));
 
   const load = async () => {
     try {
-      const resp = await axios.get('/api/restaurants/me');
+      // CORRECCIÓN: Barra final / para evitar 307 Redirect
+      const resp = await axios.get('/api/restaurants/me/');
       if (resp.data) {
         setRestaurant(resp.data);
         setExists(true);
@@ -53,7 +62,10 @@ export default function Profile() {
   };
 
   const save = async () => {
-    if (!restaurant.name?.trim()) { setError('El nombre del restaurante es obligatorio.'); return; }
+    if (!restaurant.name?.trim()) { 
+      setError('El nombre del restaurante es obligatorio.'); 
+      return; 
+    }
     setError('');
     setLoading(true);
     try {
@@ -68,13 +80,17 @@ export default function Profile() {
         data.append('maps_url',    restaurant.maps_url    || '');
         data.append('phone',       restaurant.phone       || '');
         data.append('address',     restaurant.address     || '');
+        
         if (logoFile)   data.append('logo',   logoFile);
         if (bannerFile) data.append('banner', bannerFile);
-        await axios.put('/api/restaurants/me', data, {
+
+        // CORRECCIÓN: Usamos PUT con barra final /
+        await axios.put('/api/restaurants/me/', data, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       } else {
-        await axios.post('/api/restaurants', {
+        // CORRECCIÓN: Usamos POST con barra final /
+        await axios.post('/api/restaurants/', {
           name:        restaurant.name,
           description: restaurant.description || null,
           instagram:   restaurant.instagram   || null,
@@ -88,22 +104,20 @@ export default function Profile() {
       }
       setLogoFile(null);
       setBannerFile(null);
+      setLogoPreview(null);
+      setBannerPreview(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       await load();
     } catch (err) {
       console.error('Error en save:', err.response?.data || err.message);
-      if (err.response?.status === 400) {
-        const detail = err.response.data.detail;
-        setError(typeof detail === 'string' ? detail : 'Datos inválidos. Revisa los campos.');
-      } else {
-        setError('Ocurrió un error al intentar guardar el perfil.');
-      }
+      setError(err.response?.data?.detail || 'Error al guardar el perfil.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Generamos la URL del menú usando el origen actual (Vercel o localhost)
   const menuUrl = restaurant?.slug 
     ? `${window.location.origin}/menu/${restaurant.slug}` 
     : null;
@@ -115,17 +129,15 @@ export default function Profile() {
       {error && <p className="dash-error">{error}</p>}
       {saved && <p className="dash-success">¡Guardado correctamente!</p>}
 
-      {/* ── Imágenes ── */}
       {exists && (
         <div className="dash-card">
           <p className="theme-section-label">Imágenes</p>
           <div className="profile-images">
-
             <div className="profile-img-field">
               <p className="profile-img-label">Logo</p>
-              <div className="profile-img-preview" onClick={() => logoRef.current.click()} style={{ cursor: 'pointer' }}>
+              <div className="profile-img-preview" onClick={() => logoRef.current.click()}>
                 {logoPreview || restaurant.logo ? (
-                  <img src={logoPreview || restaurant.logo} alt="Logo" />
+                  <img src={logoPreview || getFullUrl(restaurant.logo)} alt="Logo" />
                 ) : (
                   <span className="profile-img-placeholder">＋ Logo</span>
                 )}
@@ -136,9 +148,9 @@ export default function Profile() {
 
             <div className="profile-img-field profile-img-field--wide">
               <p className="profile-img-label">Banner (fondo del header)</p>
-              <div className="profile-img-preview profile-img-preview--banner" onClick={() => bannerRef.current.click()} style={{ cursor: 'pointer' }}>
+              <div className="profile-img-preview profile-img-preview--banner" onClick={() => bannerRef.current.click()}>
                 {bannerPreview || restaurant.banner ? (
-                  <img src={bannerPreview || restaurant.banner} alt="Banner" />
+                  <img src={bannerPreview || getFullUrl(restaurant.banner)} alt="Banner" />
                 ) : (
                   <span className="profile-img-placeholder">＋ Banner</span>
                 )}
@@ -146,12 +158,10 @@ export default function Profile() {
               <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }}
                 onChange={handleImageChange(setBannerFile, setBannerPreview)} />
             </div>
-
           </div>
         </div>
       )}
 
-      {/* ── Info general ── */}
       <div className="dash-card">
         <p className="theme-section-label">Información general</p>
         <div className="dash-grid-2">
@@ -171,7 +181,6 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* ── QR generado en frontend ── */}
       {menuUrl && (
         <div className="dash-card dash-qr">
           <div>
