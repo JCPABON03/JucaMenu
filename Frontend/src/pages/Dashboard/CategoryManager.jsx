@@ -14,7 +14,7 @@ export default function CategoryManager() {
 
   const load = async () => {
     try {
-      const resp = await axios.get('/api/categories');
+      const resp = await axios.get('/api/categories/');
       setCategories(resp.data);
     } catch {
       setError('No se pudieron cargar las categorías.');
@@ -32,7 +32,7 @@ export default function CategoryManager() {
     setError('');
     setLoading(true);
     try {
-      await axios.post('/api/categories', { name: name.trim() });
+      await axios.post('/api/categories/', { name: name.trim() });
       setName('');
       load();
     } catch {
@@ -45,7 +45,7 @@ export default function CategoryManager() {
   const remove = async (id, categoryName) => {
     if (!window.confirm(`¿Eliminar la categoría "${categoryName}"?`)) return;
     try {
-      await axios.delete(`/api/categories/${id}`);
+      await axios.delete(`/api/categories/${id}/`);
       load();
     } catch {
       setError('Error al eliminar la categoría.');
