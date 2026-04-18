@@ -11,6 +11,8 @@ from app.routers import public_menu_router
 
 app = FastAPI(
     title="JucaMenu API"
+    redirect_slashes=False
+    
 )
 
 # ── 1. CORS (CONFIGURACIÓN DEFINITIVA) ─────────────────────
