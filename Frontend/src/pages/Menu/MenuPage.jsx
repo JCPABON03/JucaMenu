@@ -5,34 +5,42 @@ import axios from '../../api';
 import { applyTheme, themeFromRestaurant } from '../../../hooks/UserTheme';
 import "../../styles/menu.css";
 
-const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
+// Definimos la URL base de tu API en Railway para las imágenes
+const API_BASE_URL = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:3000';
 
 export default function MenuPage() {
   const { slug } = useParams();
-  const [menu,        setMenu]        = useState(null);
-  const [error,       setError]       = useState('');
-  const [activeTab,   setActiveTab]   = useState(null);
-  const [search,      setSearch]      = useState('');
-  const [drawerOpen,  setDrawerOpen]  = useState(false);
+  const [menu, setMenu] = useState(null);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState(null);
+  const [search, setSearch] = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef();
 
   useEffect(() => {
     const load = async () => {
       try {
+        // Añadimos la barra final '/' para evitar el error 307 de Mixed Content
         const resp = await axios.get(`/api/menu/${slug}/`);
         setMenu(resp.data);
-        applyTheme(themeFromRestaurant(resp.data.restaurant));
+        
+        // Aplicar el tema personalizado del restaurante
+        if (resp.data.restaurant) {
+          applyTheme(themeFromRestaurant(resp.data.restaurant));
+        }
+
         if (resp.data.categories?.length > 0) {
           setActiveTab(resp.data.categories[0].id);
         }
-      } catch {
+      } catch (err) {
+        console.error("Error cargando el menú:", err);
         setError('No se pudo cargar el menú.');
       }
     };
     load();
   }, [slug]);
 
-  // Cerrar drawer al click fuera
+  // Cerrar drawer al hacer click fuera
   useEffect(() => {
     const handler = (e) => {
       if (drawerRef.current && !drawerRef.current.contains(e.target)) {
@@ -57,11 +65,12 @@ export default function MenuPage() {
 
   const r = menu.restaurant;
 
-  // Filtrar productos por búsqueda
+  // Lógica de filtrado
   const allProducts = menu.categories.flatMap((c) =>
     c.products.map((p) => ({ ...p, categoryName: c.name }))
   );
-  const isSearching   = search.trim().length > 0;
+  
+  const isSearching = search.trim().length > 0;
   const searchResults = isSearching
     ? allProducts.filter((p) =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -79,6 +88,13 @@ export default function MenuPage() {
     setDrawerOpen(false);
   };
 
+  // Función auxiliar para procesar URLs de imágenes (Cloudinary vs Local)
+  const getFullUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path; // Si ya es de Cloudinary
+    return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`; // Si es local del servidor
+  };
+
   return (
     <div className="menu-page">
 
@@ -86,7 +102,7 @@ export default function MenuPage() {
       <header
         className="menu-header"
         style={r.banner ? {
-          backgroundImage: `url(${API}/${r.banner.replace(/\\/g, '/')})`,
+          backgroundImage: `url(${getFullUrl(r.banner)})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         } : {}}
@@ -96,7 +112,7 @@ export default function MenuPage() {
           {r.logo && (
             <img
               className="menu-header__logo"
-              src={`${API}/${r.logo.replace(/\\/g, '/')}`}
+              src={getFullUrl(r.logo)}
               alt={r.name}
             />
           )}
@@ -104,18 +120,17 @@ export default function MenuPage() {
           {r.description && <p className="menu-header__desc">{r.description}</p>}
           <div className="menu-header__socials">
             {r.instagram && <a href={`https://instagram.com/${r.instagram}`} target="_blank" rel="noopener noreferrer">Instagram</a>}
-            {r.facebook  && <a href={r.facebook}  target="_blank" rel="noopener noreferrer">Facebook</a>}
-            {r.tiktok    && <a href={r.tiktok}    target="_blank" rel="noopener noreferrer">TikTok</a>}
-            {r.maps_url  && <a href={r.maps_url}  target="_blank" rel="noopener noreferrer">📍 Ubicación</a>}
+            {r.facebook && <a href={r.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>}
+            {r.tiktok && <a href={r.tiktok} target="_blank" rel="noopener noreferrer">TikTok</a>}
+            {r.maps_url && <a href={r.maps_url} target="_blank" rel="noopener noreferrer">📍 Ubicación</a>}
           </div>
           {r.schedule && <p className="menu-header__schedule">🕐 {r.schedule}</p>}
         </div>
       </header>
 
-      {/* ── Navbar: búsqueda + hamburger ── */}
+      {/* ── Navbar ── */}
       <div className="menu-navbar">
         <div className="menu-navbar__inner">
-          {/* Búsqueda */}
           <div className="menu-search">
             <span className="menu-search__icon">🔍</span>
             <input
@@ -125,12 +140,9 @@ export default function MenuPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            {search && (
-              <button className="menu-search__clear" onClick={() => setSearch('')}>✕</button>
-            )}
+            {search && <button className="menu-search__clear" onClick={() => setSearch('')}>✕</button>}
           </div>
 
-          {/* Hamburger */}
           <button
             className={`menu-hamburger${drawerOpen ? ' menu-hamburger--open' : ''}`}
             onClick={() => setDrawerOpen((v) => !v)}
@@ -184,33 +196,26 @@ export default function MenuPage() {
 
       {/* ── Contenido ── */}
       <main className="menu-main">
-
-        {/* Resultados de búsqueda */}
         {isSearching && (
           <>
             <p className="menu-search-label">
               {searchResults.length} resultado{searchResults.length !== 1 ? 's' : ''} para "<strong>{search}</strong>"
             </p>
             <div className="menu-grid">
-              {searchResults.length === 0 && (
-                <p className="menu-empty">No se encontraron productos.</p>
-              )}
-              {searchResults.map((p) => (
-                <ProductCard key={p.id} p={p} />
-              ))}
+              {searchResults.length === 0 && <p className="menu-empty">No se encontraron productos.</p>}
+              {searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)}
             </div>
           </>
         )}
 
-        {/* Categoría activa */}
         {!isSearching && activeCategory && (
           <div className="menu-grid">
-            {activeCategory.products.filter((p) => p.available !== false).length === 0 && (
-              <p className="menu-empty">No hay productos en esta categoría aún.</p>
+            {activeCategory.products.filter(p => p.available !== false).length === 0 && (
+              <p className="menu-empty">No hay productos aquí.</p>
             )}
             {activeCategory.products
-              .filter((p) => p.available !== false)
-              .map((p) => <ProductCard key={p.id} p={p} />)}
+              .filter(p => p.available !== false)
+              .map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)}
           </div>
         )}
       </main>
@@ -222,13 +227,19 @@ export default function MenuPage() {
   );
 }
 
-function ProductCard({ p }) {
+// Componente Card Interno
+function ProductCard({ p, getUrl }) {
+  // Manejamos las imágenes de los productos (pueden venir como array de objetos o strings)
+  const firstImage = p.images?.length > 0 
+    ? (typeof p.images[0] === 'object' ? p.images[0].image_url : p.images[0])
+    : null;
+
   return (
     <div className="menu-card">
-      {p.images?.length > 0 ? (
+      {firstImage ? (
         <img
           className="menu-card__img"
-          src={`http://localhost:8000/${p.images[0].replace(/\\/g, '/')}`}
+          src={getUrl(firstImage)}
           alt={p.name}
         />
       ) : (
