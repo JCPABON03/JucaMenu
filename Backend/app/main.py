@@ -14,6 +14,13 @@ app = FastAPI(
     redirect_slashes=True
     
 )
+# --- Proxy ---
+class GlobalHTTPSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # Forzamos a que FastAPI use el esquema 'https' para todas las URLs que genere
+        request.scope["scheme"] = "https"
+        response = await call_next(request)
+        return response
 
 # ── 1. CORS (CONFIGURACIÓN DEFINITIVA) ─────────────────────
 origins = [
