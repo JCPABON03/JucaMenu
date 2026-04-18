@@ -25,8 +25,8 @@ export default function ProductManager() {
   const load = async () => {
     try {
       const [prodResp, catResp] = await Promise.all([
-        axios.get('/api/products'),
-        axios.get('/api/categories'),
+        axios.get('/api/products/'),
+        axios.get('/api/categories/'),
       ]);
       setProducts(prodResp.data);
       setCategories(catResp.data);
@@ -58,7 +58,7 @@ export default function ProductManager() {
       data.append('description', form.description);
       data.append('category_id', form.categoryId || activeTab);
       form.files.forEach((f) => data.append('files', f));
-      await axios.post('/api/products', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await axios.post('/api/products/', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       setForm(EMPTY);
       setShowForm(false);
       load();
@@ -88,7 +88,7 @@ export default function ProductManager() {
       data.append('price',       editForm.price);
       data.append('description', editForm.description || '');
       if (editForm.categoryId) data.append('category_id', editForm.categoryId);
-      await axios.put(`/api/products/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await axios.put(`/api/products/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
       setEditing(null);
       setEditForm({});
       load();
@@ -103,7 +103,7 @@ export default function ProductManager() {
   const remove = async (id, productName) => {
     if (!window.confirm(`¿Eliminar "${productName}"?`)) return;
     try {
-      await axios.delete(`/api/products/${id}`);
+      await axios.delete(`/api/products/${id}/`);
       if (editing === id) cancelEdit();
       load();
     } catch {
