@@ -5,7 +5,7 @@ import axios from '../../api';
 import { applyTheme, themeFromRestaurant } from '../../../hooks/UserTheme';
 import "../../styles/menu.css";
 
-// Priorizamos la variable de entorno, si no, usamos la de Railway fija
+// Base URL para imágenes del servidor (Railway)
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://jucamenu-production.up.railway.app';
 
 export default function MenuPage() {
@@ -17,11 +17,10 @@ export default function MenuPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawerRef = useRef();
 
-  // Función para construir URLs de imágenes (Cloudinary vs Local)
+  // Helper para imágenes (Cloudinary o Local)
   const getFullUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path; 
-    // Limpiamos barras invertidas (Windows) por barras normales
     const cleanPath = path.replace(/\\/g, '/');
     return `${API_BASE_URL}/${cleanPath}`;
   };
@@ -29,16 +28,30 @@ export default function MenuPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        // La barra final / es CRUCIAL para evitar el 307
         const resp = await axios.get(`/api/menu/${slug}/`);
-        setMenu(resp.data);
-        
-        if (resp.data.restaurant) {
-          applyTheme(themeFromRestaurant(resp.data.restaurant));
+        let data = resp.data;
+
+        if (data.categories) {
+          // 1. ORDENAR CATEGORÍAS ALFABÉTICAMENTE
+          data.categories.sort((a, b) => a.name.localeCompare(b.name));
+          
+          // 2. ORDENAR PRODUCTOS ALFABÉTICAMENTE DENTRO DE CADA CATEGORÍA
+          data.categories.forEach(cat => {
+            if (cat.products) {
+              cat.products.sort((a, b) => a.name.localeCompare(b.name));
+            }
+          });
         }
 
-        if (resp.data.categories?.length > 0) {
-          setActiveTab(resp.data.categories[0].id);
+        setMenu(data);
+        
+        if (data.restaurant) {
+          applyTheme(themeFromRestaurant(data.restaurant));
+        }
+
+        if (data.categories?.length > 0) {
+          // Seleccionamos la primera categoría alfabética por defecto
+          setActiveTab(data.categories[0].id);
         }
       } catch (err) {
         console.error("Error al cargar menú:", err);
@@ -48,7 +61,7 @@ export default function MenuPage() {
     load();
   }, [slug]);
 
-  // Cerrar drawer al hacer click fuera
+  // Cerrar menú lateral al clickear fuera
   useEffect(() => {
     const handler = (e) => {
       if (drawerRef.current && !drawerRef.current.contains(e.target)) {
@@ -73,16 +86,21 @@ export default function MenuPage() {
 
   const r = menu.restaurant;
 
+  // Aplanar todos los productos para la búsqueda
   const allProducts = menu.categories.flatMap((c) =>
     c.products.map((p) => ({ ...p, categoryName: c.name }))
   );
   
   const isSearching = search.trim().length > 0;
+  
+  // 3. ORDENAR RESULTADOS DE BÚSQUEDA ALFABÉTICAMENTE
   const searchResults = isSearching
-    ? allProducts.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.description?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? allProducts
+        .filter((p) =>
+          p.name.toLowerCase().includes(search.toLowerCase()) ||
+          p.description?.toLowerCase().includes(search.toLowerCase())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name))
     : [];
 
   const activeCategory = !isSearching
@@ -97,6 +115,7 @@ export default function MenuPage() {
 
   return (
     <div className="menu-page">
+      {/* Header con Banner y Logo */}
       <header
         className="menu-header"
         style={r.banner ? {
@@ -112,6 +131,7 @@ export default function MenuPage() {
           )}
           <h1 className="menu-header__name">{r.name}</h1>
           {r.description && <p className="menu-header__desc">{r.description}</p>}
+          
           <div className="menu-header__socials">
             {r.instagram && <a href={`https://instagram.com/${r.instagram}`} target="_blank" rel="noreferrer">Instagram</a>}
             {r.facebook && <a href={r.facebook} target="_blank" rel="noreferrer">Facebook</a>}
@@ -122,6 +142,7 @@ export default function MenuPage() {
         </div>
       </header>
 
+      {/* Barra de Búsqueda y Hamburger */}
       <div className="menu-navbar">
         <div className="menu-navbar__inner">
           <div className="menu-search">
@@ -129,7 +150,7 @@ export default function MenuPage() {
             <input
               className="menu-search__input"
               type="text"
-              placeholder="Buscar platillo..."
+              placeholder="¿Qué te apetece hoy?"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -141,6 +162,7 @@ export default function MenuPage() {
         </div>
       </div>
 
+      {/* Tabs de Categorías (se ocultan al buscar) */}
       {!isSearching && (
         <nav className="menu-tabs">
           <div className="menu-tabs__inner">
@@ -157,6 +179,7 @@ export default function MenuPage() {
         </nav>
       )}
 
+      {/* Menú Lateral (Drawer) */}
       <div className={`menu-drawer-backdrop${drawerOpen ? ' menu-drawer-backdrop--open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <aside ref={drawerRef} className={`menu-drawer${drawerOpen ? ' menu-drawer--open' : ''}`}>
         <div className="menu-drawer__header">
@@ -178,22 +201,33 @@ export default function MenuPage() {
         </ul>
       </aside>
 
+      {/* Grid de Productos */}
       <main className="menu-main">
         <div className="menu-grid">
           {isSearching ? (
-            searchResults.length === 0 ? <p className="menu-empty">No se encontró "{search}"</p> : 
-            searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+            searchResults.length === 0 ? (
+              <p className="menu-empty">No se encontraron resultados para "{search}"</p>
+            ) : (
+              searchResults.map((p) => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+            )
           ) : (
-            activeCategory?.products.filter(p => p.available !== false).map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
+            activeCategory?.products
+              .filter(p => p.available !== false)
+              .map(p => <ProductCard key={p.id} p={p} getUrl={getFullUrl} />)
           )}
         </div>
       </main>
 
-      <footer className="menu-footer">Powered by <strong>JucaMenu</strong></footer>
+      <footer className="menu-footer">
+        Hecho con ❤️ por <strong>JucaMenu</strong>
+      </footer>
     </div>
   );
 }
 
+/**
+ * Componente Tarjeta de Producto
+ */
 function ProductCard({ p, getUrl }) {
   const imagePath = p.images?.length > 0 
     ? (typeof p.images[0] === 'object' ? p.images[0].image_url : p.images[0])
@@ -201,12 +235,17 @@ function ProductCard({ p, getUrl }) {
 
   return (
     <div className="menu-card">
-      {imagePath ? <img className="menu-card__img" src={getUrl(imagePath)} alt={p.name} loading="lazy" /> : 
-      <div className="menu-card__img menu-card__img--placeholder">🍽</div>}
+      {imagePath ? (
+        <img className="menu-card__img" src={getUrl(imagePath)} alt={p.name} loading="lazy" />
+      ) : (
+        <div className="menu-card__img menu-card__img--placeholder">🍽️</div>
+      )}
       <div className="menu-card__body">
         <h3 className="menu-card__name">{p.name}</h3>
         {p.description && <p className="menu-card__desc">{p.description}</p>}
-        <span className="menu-card__price">${Number(p.price).toLocaleString()}</span>
+        <span className="menu-card__price">
+          ${Number(p.price).toLocaleString('es-CO')}
+        </span>
       </div>
     </div>
   );
