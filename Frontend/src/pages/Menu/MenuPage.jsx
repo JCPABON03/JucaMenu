@@ -219,7 +219,7 @@ export default function MenuPage() {
       </main>
 
       <footer className="menu-footer">
-        Hecho con ❤️ por <strong>JucaMenu</strong>
+        powered by <strong>JucaMenu</strong>
       </footer>
     </div>
   );
