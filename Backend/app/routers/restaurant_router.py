@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from typing import Optional
 from sqlalchemy.orm import Session
+import os
 
 from app.schemas import restaurant_schema
 from app.services import restaurant_service
@@ -10,7 +11,6 @@ from app.utils import image_upload
 from app import models
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
-
 
 @router.post("/", response_model=restaurant_schema.RestaurantResponse)
 def create_restaurant(
@@ -23,13 +23,11 @@ def create_restaurant(
         raise HTTPException(status_code=400, detail="User already has a restaurant")
     return restaurant_service.RestaurantService.create_restaurant(db, restaurant_in, user_id=current_user.id)
 
-
-@router.get("/me", response_model=restaurant_schema.RestaurantResponse)
+@router.get("/me/", response_model=restaurant_schema.RestaurantResponse)
 def read_my_restaurant(restaurant: models.Restaurant = Depends(get_current_restaurant)):
     return restaurant
 
-
-@router.put("/me", response_model=restaurant_schema.RestaurantResponse)
+@router.put("/me/", response_model=restaurant_schema.RestaurantResponse)
 def update_my_restaurant(
     name:        str           = Form(...),
     description: Optional[str] = Form(None),
@@ -67,21 +65,28 @@ def update_my_restaurant(
 
     return restaurant_service.RestaurantService.update_restaurant(db, restaurant, updates)
 
-
-@router.patch("/me/theme", response_model=restaurant_schema.RestaurantResponse)
+@router.patch("/me/theme/", response_model=restaurant_schema.RestaurantResponse)
 def update_my_theme(
     theme:      restaurant_schema.RestaurantThemeUpdate,
     restaurant: models.Restaurant = Depends(get_current_restaurant),
-    db:         Session = Depends(get_db),
+    db:          Session = Depends(get_db),
 ):
     updates = theme.model_dump(exclude_none=True)
     return restaurant_service.RestaurantService.update_restaurant(db, restaurant, updates)
 
-
-@router.get("/me/qr")
+@router.get("/me/qr/")
 def get_my_qr(restaurant: models.Restaurant = Depends(get_current_restaurant)):
     from app.utils import qr_generator
-    menu_url = f"http://localhost:3000/menu/{restaurant.slug}"
+    
+    # IMPORTANTE: Cambia localhost por tu dominio real de Vercel
+    # Lo ideal es que FRONTEND_URL sea una variable de entorno en Railway
+    frontend_url = os.getenv("FRONTEND_URL", "https://juca-menu.vercel.app")
+    backend_url = os.getenv("BACKEND_URL", "https://jucamenu-production.up.railway.app")
+    
+    menu_url = f"{frontend_url}/menu/{restaurant.slug}"
     qr_local = qr_generator.generate_qr(menu_url, restaurant.slug)
-    qr_url   = f"http://localhost:8000/{qr_local}"
+    
+    # La ruta del QR debe apuntar al dominio de Railway con HTTPS
+    qr_url = f"{backend_url}/{qr_local}"
+    
     return {"menu_url": menu_url, "qr_path": qr_url}
