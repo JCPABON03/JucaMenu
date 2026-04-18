@@ -14,4 +14,4 @@ pillow
 python-multipart
 authlib
 httpx
-pip install pydantic[email]
+pydantic[email]
