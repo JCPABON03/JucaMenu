@@ -33,23 +33,20 @@ export default function Profile() {
 
   const load = async () => {
     try {
-      await axios.post('/api/restaurants/', {
-        name: restaurant.name,
-        description: restaurant.description || null,
-        instagram: restaurant.instagram || null,
-        facebook: restaurant.facebook || null,
-        tiktok: restaurant.tiktok || null,
-        schedule: restaurant.schedule || null,
-        maps_url: restaurant.maps_url || null,
-        phone: restaurant.phone || null,
-        address: restaurant.address || null,
-      });
-      setRestaurant(resp.data);
-      setExists(true);
-      localStorage.setItem('jucamenu_restaurant', JSON.stringify(resp.data));
+      // CAMBIO: Usar GET a /me/ para ver si ya tengo uno
+      const resp = await axios.get('api/restaurants/me/'); 
+      
+      if (resp.data) {
+        setRestaurant(resp.data);
+        setExists(true); // <--- Esto evitará que intente hacer POST de nuevo
+        localStorage.setItem('jucamenu_restaurant', JSON.stringify(resp.data));
+      }
     } catch (err) {
-      if (err.response?.status === 404) setExists(false);
-      else setError('No se pudo cargar el perfil.');
+      if (err.response?.status === 404) {
+        setExists(false); // Aquí sí es válido intentar un POST después
+      } else {
+        console.error("Error cargando perfil:", err);
+      }
     }
   };
 
