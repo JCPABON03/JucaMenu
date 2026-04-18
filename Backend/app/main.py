@@ -10,7 +10,7 @@ from app.routers import product_router
 from app.routers import public_menu_router
 
 app = FastAPI(
-    title="JucaMenu API"
+    title="JucaMenu API",
     redirect_slashes=False
     
 )
