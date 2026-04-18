@@ -23,33 +23,45 @@ const COLOR_FIELDS = [
 ];
 
 export default function ThemeManager() {
-  const [theme,   setTheme]  = useState(DEFAULT_THEME);
-  const [saved,   setSaved]  = useState(false);
-  const [error,   setError]  = useState('');
+  const [theme,   setTheme]   = useState(DEFAULT_THEME);
+  const [saved,   setSaved]   = useState(false);
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
   // Cargar tema actual desde el backend
   useEffect(() => {
     const load = async () => {
       try {
+        // CORRECCIÓN: Se añade '/' al final para evitar 307
         const resp = await axios.get('/api/restaurants/me/');
-        setTheme(themeFromRestaurant(resp.data));
-      } catch {
-        setError('No se pudo cargar el tema.');
+        if (resp.data) {
+          setTheme(themeFromRestaurant(resp.data));
+        }
+      } catch (err) {
+        console.error("Error cargando tema:", err);
+        setError('No se pudo cargar el tema actual.');
       }
     };
     load();
   }, []);
 
-  useEffect(() => { applyTheme(theme); }, [theme]);
+  // Aplicar el tema visualmente mientras se cambia en el panel
+  useEffect(() => { 
+    applyTheme(theme); 
+  }, [theme]);
 
-  const update     = (key, value) => setTheme((t) => ({ ...t, [key]: value }));
-  const applyPreset = (preset) => { const { label, ...colors } = preset; setTheme(colors); };
+  const update = (key, value) => setTheme((t) => ({ ...t, [key]: value }));
+  
+  const applyPreset = (preset) => { 
+    const { label, ...colors } = preset; 
+    setTheme(colors); 
+  };
 
   const handleSave = async () => {
     setLoading(true);
     setError('');
     try {
+      // CORRECCIÓN: Se añade '/' al final para evitar 307 Redirect en el PATCH
       await axios.patch('/api/restaurants/me/theme/', {
         theme_primary: theme.primary,
         theme_accent:  theme.accent,
@@ -58,8 +70,9 @@ export default function ThemeManager() {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {
-      setError('Error al guardar el tema.');
+    } catch (err) {
+      console.error("Error guardando tema:", err);
+      setError('Error al guardar el tema en el servidor.');
     } finally {
       setLoading(false);
     }
@@ -75,7 +88,6 @@ export default function ThemeManager() {
       {error && <p className="dash-error">{error}</p>}
       {saved && <p className="dash-success">¡Tema guardado correctamente!</p>}
 
-      {/* Presets */}
       <div className="dash-card">
         <p className="theme-section-label">Paletas predefinidas</p>
         <div className="theme-presets">
@@ -93,7 +105,6 @@ export default function ThemeManager() {
         </div>
       </div>
 
-      {/* Colores personalizados */}
       <div className="dash-card">
         <p className="theme-section-label">Colores personalizados</p>
         <div className="theme-fields">
@@ -112,13 +123,12 @@ export default function ThemeManager() {
         </div>
       </div>
 
-      {/* Preview */}
       <div className="dash-card">
         <p className="theme-section-label">Vista previa</p>
         <div className="theme-preview" style={{ background: theme.primary }}>
           <div className="theme-preview__header">
             <span className="theme-preview__restaurant" style={{ color: theme.accent }}>Mi Restaurante</span>
-            <span className="theme-preview__desc"      style={{ color: theme.text }}>Descripción del restaurante</span>
+            <span className="theme-preview__desc"       style={{ color: theme.text }}>Descripción del restaurante</span>
           </div>
           <div className="theme-preview__cards">
             {['Pasta', 'Pizza', 'Ensalada'].map((name) => (
