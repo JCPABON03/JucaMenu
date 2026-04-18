@@ -2,54 +2,60 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+import logging
 
 from app.database import Base, engine
-from app.routers import auth_router
-from app.routers import restaurant_router
-from app.routers import category_router
-from app.routers import product_router
-from app.routers import public_menu_router
+from app.routers import auth_router, restaurant_router, category_router, product_router, public_menu_router
 
 app = FastAPI(
     title="JucaMenu API",
     redirect_slashes=True
-    
 )
-# --- Proxy ---
+
+# ── 1. Middlewares ──────────────────────────────────────────
+
+# Middleware para forzar HTTPS (Útil para Railway)
 class GlobalHTTPSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        # Forzamos a que FastAPI use el esquema 'https' para todas las URLs que genere
         request.scope["scheme"] = "https"
         response = await call_next(request)
         return response
 
-# ── 1. CORS (CONFIGURACIÓN DEFINITIVA) ─────────────────────
+app.add_middleware(GlobalHTTPSMiddleware)
+
+# CONFIGURACIÓN DE CORS
+# Mantenemos origins para local y producción fija
 origins = [
     "https://juca-menu.vercel.app",
-    "https://juca-menu-fnypxvcvi-juancas-projects-d1fcab06.vercel.app",
-    "https://juca-menu-ifp80bm6x-juancas-projects-d1fcab06.vercel.app", # La URL del error
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https://juca-menu-.*\.vercel\.app", # Acepta cualquier URL de tu proyecto en Vercel
+    # El regex es la clave para las URLs dinámicas de Vercel
+    allow_origin_regex=r"https://juca-menu-.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
-    expose_headers=["*"], # Añadimos esto para mayor compatibilidad
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ── 2. Routers ─────────────────────────────────────────────
-app.include_router(auth_router.router,        prefix="/api")
+app.include_router(auth_router.router,       prefix="/api")
 app.include_router(restaurant_router.router,  prefix="/api")
 app.include_router(category_router.router,    prefix="/api")
 app.include_router(product_router.router,     prefix="/api")
 app.include_router(public_menu_router.router, prefix="/api")
 
 # ── 3. Static files ────────────────────────────────────────
+# Asegúrate de que la carpeta 'static' exista en la raíz para evitar errores al arrancar
+import os
+if not os.path.exists("static"):
+    os.makedirs("static")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── 4. Base de datos ───────────────────────────────────────
@@ -57,19 +63,10 @@ Base.metadata.create_all(bind=engine)
 
 # ── 5. Startup ─────────────────────────────────────────────
 @app.on_event("startup")
-def verify_bcrypt():
+def startup_event():
+    # Simplificamos la verificación de bcrypt
     try:
         import bcrypt
-        try:
-            ver = bcrypt.__about__.__version__
-        except AttributeError:
-            ver = getattr(bcrypt, "__version__", None)
-        if not ver:
-            raise AttributeError("no version attribute found")
-        import logging
-        logging.info(f"bcrypt version {ver} detected")
-    except Exception:
-        import logging
-        logging.warning(
-            "unable to determine bcrypt version; ensure bcrypt>=5.1.0 is installed",
-        )
+        logging.info("Bcrypt verificado correctamente")
+    except ImportError:
+        logging.error("Bcrypt no está instalado")
