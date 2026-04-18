@@ -13,11 +13,15 @@ app = FastAPI(
     title="JucaMenu API"
 )
 
-# ── 1. Middleware ──────────────────────────────────────────
+# ── 1. CORS Middleware ─────────────────────────────────────
+origins = [
+    "https://juca-menu-fnypxvcvi-juancas-projects-d1fcab06.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,   # 🔥 importante: tu frontend
+    allow_credentials=True,  # 🔥 necesario para auth (tokens, cookies)
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,11 +39,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ── 4. Base de datos ───────────────────────────────────────
 Base.metadata.create_all(bind=engine)
 
-
 # ── 5. Startup ─────────────────────────────────────────────
 @app.on_event("startup")
 def verify_bcrypt():
-    """Ensure we can read the bcrypt package version."""
     try:
         import bcrypt
         try:
