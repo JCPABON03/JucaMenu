@@ -60,9 +60,6 @@ npm install
 npm run dev
 ```
 
-Para habilitar login con Google es necesario registrar la aplicación en la [consola de Google](https://console.developers.google.com), obtener `CLIENT_ID` y `CLIENT_SECRET`, y exportarlos al entorno del backend: `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. El callback esperado es `http://localhost:8000/auth/google/callback`.
-
-Al regresar del flujo OAuth, el backend produce una **pequeña página HTML** que contiene la información del token en formato JSON y la guarda automáticamente en `localStorage` para redirigir al dashboard. Esto evita el uso de parámetros en la URL y facilita el manejo en el frontend.
 
 3. La aplicación estará en `http://localhost:3000`. El proxy está configurado para redirigir `/api` y `/static` al backend.
 
@@ -78,4 +75,3 @@ Al regresar del flujo OAuth, el backend produce una **pequeña página HTML** qu
 
 ---
 
-Puedes extender los componentes y estilos según tus necesidades. ¡Buena suerte!
