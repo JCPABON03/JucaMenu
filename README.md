@@ -79,7 +79,7 @@ JucaMenu/
 └── README.md
 ```
 
-> ⚠️ Ajusta esta estructura si tu repo está organizado de forma diferente.
+
 
 ---
 
